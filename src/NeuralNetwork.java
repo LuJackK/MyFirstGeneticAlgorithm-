@@ -55,10 +55,26 @@ public class NeuralNetwork {
         weights.add(layerOut);
         biases.add(new Tensor(biasOut));
     }
-    public Tensor getResult(double[] inputData){
+    public Tensor input(double[] inputData){
         Tensor input = new Tensor(inputData);
-        Tensor neurons = new Tensor[sizeLayers];
+        Tensor neurons = new Tensor(sizeLayers);
         Tensor[] inputWeights = weights.get(0);
-        neurons = input.dot
+        for(int i = 0; i<sizeLayers; i++){
+            neurons.setNeuronValue(input.dot(inputWeights[i]), i);
+        }
+        for(int i = 1; i<noLayers-1; i++){
+            Tensor [] currentWeights = weights.get(i);
+            Tensor nextNeurons = new Tensor(sizeLayers);
+            for(int j = 0; j<sizeLayers; j++){
+                nextNeurons.setNeuronValue(neurons.dot(currentWeights[j]), i);
+            }
+            neurons = nextNeurons;
+        }
+        Tensor [] outputWeights = weights.get(noLayers);
+        Tensor output = new Tensor(outputSize);
+        for(int i = 0; i<outputSize; i++){
+            output.setNeuronValue(neurons.dot(outputWeights[i]), i);
+        }
+        return output;
     }
 }
