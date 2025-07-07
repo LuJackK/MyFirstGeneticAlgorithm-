@@ -14,6 +14,12 @@ public class Tensor {
     public double[] getData() {
         return this.data;
     }
+    public int getSize() {
+        return this.data.length;
+    }
+    public double getData(int i){
+        return this.data[i];
+    }
     public double dot(Tensor t) {
         double value = 0.0;
         for (int i = 0; i < this.data.length; i++) {

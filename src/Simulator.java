@@ -1,9 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Random;
-import java.util.Stack;
+import java.util.*;
 
 public class Simulator extends JPanel {
     private static final int scale = 2;
@@ -91,31 +88,49 @@ public class Simulator extends JPanel {
     }
     private void checkVision(){
         for(Agent a : population){
-            Stack<EventData> events = new Stack<>();
+            int nFoodInputs = 5;
+            int[][] foodInputs = new int[nFoodInputs][2];
+            int nPlayerInputs = 5;
+            int[][] playerInputs = new int[nPlayerInputs][2];
             for(Point p : foods){
-                if(calculateDistance(a.getCordinates(), p) < visionRadius){
-                    events.push(new EventData(Event.FOOD_NEARBY, p));
+                double currentDist = calculateDistance(a.getCordinates(), p);
+                if(currentDist < visionRadius){
+                    nFoodInputs--;
+                    if(nFoodInputs == 0){
+                        Arrays.sort(foodInputs, Comparator.comparingDouble(
+                                point -> calculateDistance(new Point(point[0], point[1]), a.getCordinates())
+                        ));
+                        double maxDist = calculateDistance(a.getCordinates(), new Point(foodInputs[4][0], foodInputs[4][1]));
+                        if(maxDist > currentDist){
+                            foodInputs[4] = new int[]{p.x, p.y};
+                            continue;
+                        }
+                    }
+                    foodInputs[nFoodInputs-1] = new int[]{p.x, p.y};
                 }
             }
             for(Agent b : population){
                 if(b == a){
                     continue;
                 }
-                if(calculateDistance(a.getCordinates(), b.getCordinates()) < visionRadius){
-                    if(agentSeeOthers){
-                        events.push(new EventData(Event.PERSON_NEARBY, b.getCordinates()));
+                double currentDist = calculateDistance(a.getCordinates(), b.getCordinates());
+                if( currentDist < visionRadius){
+                    nPlayerInputs--;
+                    if(nPlayerInputs == 0){
+                        Arrays.sort(playerInputs, Comparator.comparingDouble(
+                                point -> calculateDistance(new Point(point[0], point[1]), a.getCordinates())
+                        ));
+                        double maxDist = calculateDistance(a.getCordinates(), new Point(playerInputs[4][0], playerInputs[4][1]));
+                        if(maxDist > currentDist){
+                            foodInputs[4] = new int[]{b.getCordinates().x, b.getCordinates().y};
+                        }
+                        continue;
                     }
+                    foodInputs[nFoodInputs-1] = new int[]{b.getCordinates().x, b.getCordinates().y};
+                }
                 }
             }
-            events.add(new EventData(Event.NONE, new Point(a.getCordinates().x, a.getCordinates().y)));
-            int c =0;
-            while(rand.nextBoolean()){
-                c++;
-            }
-            for(int i=0; i<c; i++){
-                //events.add(new EventData(Event.NONE, new Point(a.getCordinates().x, a.getCordinates().y)));
-            }
-            evaluateAction(a, a.evaluateBehavior(events));
+
         }
     }
     private void evaluateAction(Agent a, Action action){
