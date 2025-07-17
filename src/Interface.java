@@ -3,15 +3,16 @@ import java.awt.*;
 import java.util.*;
 
 public class Interface extends JFrame {
-    private boolean agentRandomSpawn = false;
+    private boolean agentRandomSpawn = true;
     private boolean selectFittestByRank = true;
-    private boolean crossoverElitism = true;
+    private boolean crossoverElitism = false;
     private boolean crossoverPointFixed = true;
-    private int mutationStepSize = 1;
-    private boolean seeOthers = false;
-    private int foodSpawnRadius = 100;
-    private float mutationRate = (float) 0.4;
+    private double mutationStepSize = 0.01;
+    private boolean seeOthers = true;
+    private int foodSpawnRadius = 200;
+    private float mutationRate = (float) 0.2;
     private int populationSize;
+    private int numberOfInputs = 12;
     Simulator panel;
 
     private JPanel createControlsPanel() {
@@ -46,11 +47,11 @@ public class Interface extends JFrame {
         JLabel mutationLabel = new JLabel("Mutation Step Size:");
         controlsPanel.add(mutationLabel);
 
-        JSlider mutationSlider = new JSlider(1, 10, mutationStepSize);
+        JSlider mutationSlider = new JSlider(1, 10);
         mutationSlider.setMajorTickSpacing(1);
         mutationSlider.setPaintTicks(true);
         mutationSlider.setPaintLabels(true);
-        mutationSlider.addChangeListener(e -> mutationStepSize = mutationSlider.getValue());
+        //mutationSlider.addChangeListener(e -> mutationStepSize = mutationSlider.getValue());
         controlsPanel.add(mutationSlider);
 
         JLabel spawnRadiusLabel = new JLabel("Food spawn radius");
@@ -77,7 +78,7 @@ public class Interface extends JFrame {
         }
         mutationRateSlider.setLabelTable(labelTable);
 
-        mutationRateSlider.addChangeListener(e -> mutationRate = (float) (mutationRateSlider.getValue() / 10.0));
+        //mutationRateSlider.addChangeListener(e -> mutationRate = (float) (mutationRateSlider.getValue() / 10.0));
         controlsPanel.add(mutationRateSlider);
 
 
@@ -91,7 +92,7 @@ public class Interface extends JFrame {
 
     public Interface() {
         populationSize = askForPopulationSize();
-        Population population = new Population(20);
+        Population population = new Population(populationSize, numberOfInputs);
         panel = new Simulator(population, agentRandomSpawn, foodSpawnRadius, seeOthers);
         this.setDefaultCloseOperation(EXIT_ON_CLOSE);
         this.add(panel);
@@ -115,7 +116,7 @@ public class Interface extends JFrame {
             } else {
                 population = population.selectFitestByTournament();
             }
-            population = population.crossover(crossoverElitism, crossoverPointFixed);
+            population = population.crossover(crossoverElitism);
             population.mutate(mutationStepSize, mutationRate);
 
             Simulator newPanel = new Simulator(population, agentRandomSpawn, foodSpawnRadius, seeOthers);

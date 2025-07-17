@@ -34,4 +34,11 @@ public class Tensor {
         }
         return new Tensor(newData);
     }
+    public Tensor ReLU() {
+        double[] newData = new double[this.data.length];
+        for (int i = 0; i < this.data.length; i++) {
+            newData[i] = Math.max(this.data[i], 0);
+        }
+        return new Tensor(newData);
+    }
 }

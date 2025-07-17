@@ -7,7 +7,7 @@ public class NeuralNetwork {
     private int noLayers;
     private ArrayList<Tensor[]> weights = new ArrayList();
     private ArrayList<Tensor> biases = new ArrayList();
-    public NeuralNetwork(int inputSize, int outputSize, int noLayers, int sizeLayers, int weightMin, int weightMax, int biasMin, int biasMax) {
+    public NeuralNetwork(int inputSize, int outputSize, int noLayers, int sizeLayers, double weightMin, double weightMax, double biasMin, double biasMax) {
         Random rand = new Random();
         this.inputSize = inputSize;
         this.outputSize = outputSize;
@@ -55,6 +55,22 @@ public class NeuralNetwork {
         weights.add(layerOut);
         biases.add(new Tensor(biasOut));
     }
+    public NeuralNetwork (ArrayList<Tensor[]> weights, ArrayList<Tensor> biases) {
+        this.weights = weights;
+        this.biases = biases;
+        this.inputSize = weights.getFirst()[0].getSize();
+        this.outputSize = biases.getLast().getSize();
+        this.sizeLayers = weights.getFirst().length;
+        this.noLayers = weights.size() - 2;
+    }
+
+    public ArrayList<Tensor[]> getWeights() {
+        return weights;
+    }
+    public ArrayList<Tensor> getBiases() {
+        return biases;
+    }
+
     public void printNN() {
         System.out.println("Neural Network Structure:");
         System.out.println("Input Size: " + inputSize);
@@ -111,13 +127,14 @@ public class NeuralNetwork {
         }
     }
 
-    public Tensor input(double[] inputData){
+    public double[] input(double[] inputData){
         Tensor input = new Tensor(inputData);
         Tensor neurons = new Tensor(sizeLayers);
         Tensor[] inputWeights = weights.get(0);
         Tensor inputBias = biases.get(0);
         for(int i = 0; i<sizeLayers ; i++){
             neurons.setNeuronValue((input.dot(inputWeights[i])+inputBias.getData(i)), i);
+            neurons.ReLU();
         }
         for(int i = 1; i<noLayers; i++){
             Tensor [] currentWeights = weights.get(i);
@@ -125,6 +142,7 @@ public class NeuralNetwork {
             Tensor nextNeurons = new Tensor(sizeLayers);
             for(int j = 0; j<sizeLayers; j++){
                 nextNeurons.setNeuronValue((neurons.dot(currentWeights[j])+currentBias.getData(j)), i);
+                nextNeurons.ReLU();
                 //calulates the dot product of the previous layer and its respective weights for a specific neuron and adds bias.
             }
             neurons = nextNeurons;
@@ -135,6 +153,7 @@ public class NeuralNetwork {
         for(int i = 0; i<outputSize; i++){
             output.setNeuronValue((neurons.dot(outputWeights[i])+outputBias.getData(i)), i);
         }
-        return output;
+        return output.getData();
     }
+
 }
