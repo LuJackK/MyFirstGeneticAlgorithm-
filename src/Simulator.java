@@ -6,12 +6,12 @@ public class Simulator extends JPanel {
     private static final int scale = 2;
     private static final int WIDTH = 800;
     private static final int HEIGHT = 600;
-    private static final int foodAmmount = 50;
+    private static final int foodAmmount = 90;
     private static final int agentSpeed = 1 * scale;
     private static int centerX = WIDTH / 2;
     private static int centerY = HEIGHT / 2;
     private static int spawnRadius = 300;
-    private static int visionRadius = 15 * scale;
+    private static int visionRadius = 30 * scale;
     private static int agentSize = 5 * scale;
     private static int foodSize = 3 * scale;
     private static int popSize;
@@ -69,7 +69,6 @@ public class Simulator extends JPanel {
         int centerY = 50;
 
         for (Agent a : population) {
-
             double angle = rand.nextDouble() * 2 * Math.PI;
             double r = radius * Math.sqrt(rand.nextDouble());
             int x = centerX + (int) (r * Math.cos(angle));
@@ -80,54 +79,50 @@ public class Simulator extends JPanel {
 
     private void drawAgents(Graphics2D g){
         for(Agent a : population){
-            g.setColor(Color.BLACK);
-            Point cords = a.getCordinates();
-            g.drawOval(cords.x-5, cords.y-5, agentSize, agentSize);
-            g.fillOval(cords.x-5, cords.y-5, agentSize, agentSize);
+            if(a.getStatus()==AgentState.ALIVE)
+            {
+                g.setColor(Color.BLACK);
+                Point cords = a.getCordinates();
+                int size = agentSize+a.getSize();
+                g.drawOval(cords.x - size / 2, cords.y - size / 2, size, size);
+                g.fillOval(cords.x - size / 2, cords.y - size / 2, size, size);
+            }
         }
     }
     private void checkVision(){
         for(Agent a : population){
+            if(a.getStatus()==AgentState.DEAD){continue;}
             ArrayList<Point> seenFoods = new ArrayList<>();
             for(Point p : foods){
                 double currentDist = calculateDistance(a.getCordinates(), p);
                 if(currentDist < visionRadius){
-                   seenFoods.add(p);
                 }
+                seenFoods.add(p);
             }
             seenFoods.sort(Comparator.comparingDouble(p -> calculateDistance(a.getCordinates(), p)));
-            int nFoodInputs = Math.min(5, seenFoods.size());
             int[][] foodInputs = new int[5][2];
-            for (int i = 0; i < nFoodInputs; i++) {
-                foodInputs[i][0] = seenFoods.get(i).x;
-                foodInputs[i][1] = seenFoods.get(i).y;
+            for (int i = 0; i < 5; i++) {
+                foodInputs[i][0] = (seenFoods.get(i).x-a.getCordinates().x);
+                foodInputs[i][1] = seenFoods.get(i).y-a.getCordinates().y;
             }
-            for (int i = nFoodInputs; i < 5; i++) {
-                foodInputs[i][0] = -1;
-                foodInputs[i][1] = -1;
-            }
-            ArrayList<Point> seenPlayers = new ArrayList<>();
+
+            ArrayList<Agent> seenPlayers = new ArrayList<>();
             for(Agent b : population){
                 if(b == a){
                     continue;
                 }
                 double currentDist = calculateDistance(a.getCordinates(), b.getCordinates());
                 if( currentDist < visionRadius){
-                    seenPlayers.add(b.getCordinates());
                 }
+                seenPlayers.add(b);
             }
-            seenPlayers.sort(Comparator.comparingDouble(p -> calculateDistance(a.getCordinates(), p)));
-            int nPlayerInputs = Math.min(5, seenPlayers.size());
-            int[][] playerInputs = new int[5][2];
-            for (int i = 0; i < nPlayerInputs; i++) {
-                playerInputs[i][0] = seenPlayers.get(i).x;
-                playerInputs[i][1] = seenPlayers.get(i).y;
+            seenPlayers.sort(Comparator.comparingDouble(p -> calculateDistance(a.getCordinates(), p.getCordinates())));
+            int[][] playerInputs = new int[5][3];
+            for (int i = 0; i < 5; i++) {
+                playerInputs[i][0] = seenPlayers.get(i).getCordinates().x-a.getCordinates().x;
+                playerInputs[i][1] = seenPlayers.get(i).getCordinates().y-a.getCordinates().y;
+                playerInputs[i][2] = seenPlayers.get(i).getSize();
             }
-            for (int i = nPlayerInputs; i < 5; i++) {
-                playerInputs[i][0] = -1;
-                playerInputs[i][1] = -1;
-            }
-
             evaluateAction(a, a.evaluateBehavior(foodInputs, playerInputs));
         }
 
@@ -146,12 +141,28 @@ private void evaluateAction(Agent a, Action action){
 }
 private void checkCollision(){
     for(Agent a : population) {
-        Iterator<Point> iterator = foods.iterator();
-        while (iterator.hasNext()) {
-            Point p = iterator.next();
-            if (calculateDistance(a.getCordinates(), p) < foodSize + agentSize) {
-                iterator.remove();
+        if(a.getStatus()==AgentState.DEAD){continue;}
+        Iterator<Point> foodIterator = foods.iterator();
+        while (foodIterator.hasNext()) {
+            Point p = foodIterator.next();
+            if (calculateDistance(a.getCordinates(), p) < foodSize + a.getSize()) {
+                foodIterator.remove();
                 a.foodEat();
+            }
+        }
+        Iterator<Agent> agentIterator = population.iterator();
+        while (agentIterator.hasNext()) {
+            Agent curr = agentIterator.next();
+            if(curr.getStatus()==AgentState.DEAD){continue;}
+            if(calculateDistance(a.getCordinates(), curr.getCordinates()) < (double) (a.getSize() + agentSize * 2 + curr.getSize()) /2) {
+                if(a.getSize()>curr.getSize()){
+                    curr.setStatus(AgentState.DEAD);
+                    a.eatEnemy(curr);
+                    System.out.println("YUMM");
+                }
+                else{
+                    continue;
+                }
             }
         }
         if(isOutOfBounds(a)){
@@ -182,7 +193,7 @@ public void simulate (int genLength){
         checkCollision();
         repaint();
         try {
-            Thread.sleep(20);
+            Thread.sleep(10);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

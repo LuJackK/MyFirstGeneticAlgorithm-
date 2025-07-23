@@ -3,15 +3,17 @@ import java.util.*;
 
 public class Agent {
     private NeuralNetwork genome;
-    private int foodEaten;
+    private int foodEaten=0;
     private int mapExited;
-    private double foodProximty=0;
+    private double foodProximty = 0;
+    private double foodGrowth = 0.1;
     private Point cordinates;
-    private static final int noOfHiddenLayers = 2;
+    private static final int noOfHiddenLayers = 3;
     private static final double biasMin = 0;
     private static final double biasMax = 0.001;
     private static final double weightMin = -1;
     private static final int weightMax = 1;
+    private AgentState status = AgentState.ALIVE;
     public Agent(int inputSize, int outputSize) {
         int sizeLayers =(int) (((inputSize + outputSize) / 2.0) + (2*inputSize)) / 2;
         this.genome = new NeuralNetwork(inputSize, outputSize, noOfHiddenLayers, sizeLayers, weightMin, weightMax, biasMin, biasMax);
@@ -22,25 +24,29 @@ public class Agent {
         this.genome = genome;
     }
     public Action evaluateBehavior(int[][] foodInputs, int[][] playerInputs){
-        double[] input = new double[foodInputs.length+playerInputs.length+2];
+        int inputLength = (foodInputs.length*foodInputs[0].length)+(playerInputs.length*playerInputs[0].length);
+        double[] input = new double[inputLength+3];
         int counter = 0;
         for(int i =0; i<foodInputs.length; i++){
-            input[counter] = foodInputs[i][0];
-            input[counter+1] = foodInputs[i][1];
+            input[counter] = foodInputs[i][0]/1000f;
+            input[counter+1] = foodInputs[i][1]/1000f;
             counter += 2;
         }
-        counter = 0;
+        counter = foodInputs.length*foodInputs[0].length;
         for(int i =0; i<playerInputs.length; i++){
-            input[counter] = playerInputs[i][0];
-            input[counter+1] = playerInputs[i][1];
-            counter += 2;
+            input[counter] = playerInputs[i][0]/1000f;
+            input[counter+1] = playerInputs[i][1]/1000f;
+            input[counter+2] = playerInputs[i][2]/100f;
+            counter += 3;
         }
-        input[(foodInputs.length + playerInputs.length)-2] = cordinates.x;
-        input[(foodInputs.length + playerInputs.length)-1] = cordinates.y;
+        input[inputLength] = cordinates.x/1000f;
+        input[inputLength+1] = cordinates.y/1000f;
+        input[inputLength+2] = foodEaten/100f;
+        //System.out.println("Input:" + Arrays.toString(input));
         double[] output = this.genome.input(input);
+        //System.out.println("Output:" + Arrays.toString(output));
         return evaluateNNOutput(output);
     }
-
     private Action evaluateNNOutput(double[] output){
         int mostActivatedNeuron=-1;
         double maxValue = Double.NEGATIVE_INFINITY;
@@ -63,32 +69,6 @@ public class Agent {
             case (7) -> Action.MOVEUPLEFT;
             default -> Action.NONE;
         };
-    }
-
-    public void foodEat(){
-        foodEaten++;
-    }
-    public double getStats(){
-        return (foodEaten*100) + (1000-foodProximty) - (mapExited*100);
-    }
-
-    public void setFoodProximty(double foodProximty) {
-        this.foodProximty = foodProximty;
-    }
-
-    public Point getCordinates() {
-        return cordinates;
-    }
-    public void setCordinates(Point cordinates) {
-        this.cordinates = cordinates;
-    }
-    public void translateCordinates(int dx, int dy) {
-        this.cordinates.x += dx;
-        this.cordinates.y += dy;
-    }
-
-    public NeuralNetwork getGenome() {
-        return genome;
     }
 
     public void mutateAgent(double mutationStepSize, double mutationRate){
@@ -130,9 +110,40 @@ public class Agent {
         }
         this.genome = new NeuralNetwork(newWeights, newBiases);
     }
-
-
+    public void foodEat(){
+        foodEaten++;
+    }
+    public double getStats(){
+        return (foodEaten*100) - (mapExited*100);
+    }
+    public void setSize(int s){
+        foodEaten = s;
+    }
+    public int getSize() {
+        return foodEaten;
+    }
+    public void setStatus(AgentState status) {this.status = status;}
+    public AgentState getStatus(){return status;}
+    public void setFoodProximty(double foodProximty) {
+        this.foodProximty = foodProximty;
+    }
+    public Point getCordinates() {
+        return cordinates;
+    }
+    public void setCordinates(Point cordinates) {
+        this.cordinates = cordinates;
+    }
+    public void translateCordinates(int dx, int dy) {
+        this.cordinates.x += dx;
+        this.cordinates.y += dy;
+    }
     public void punish(){
         mapExited++;
+    }
+    public void eatEnemy(Agent a){
+        this.foodEaten+= a.foodEaten;
+    }
+    public NeuralNetwork getGenome() {
+        return genome;
     }
 }

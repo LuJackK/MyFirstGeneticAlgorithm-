@@ -22,7 +22,7 @@ public class Population extends ArrayList<Agent> {
         }});
         ArrayList<Agent> selcted = new ArrayList<>();
         for(int i=0; i<this.size()/2; i++){
-            System.out.println(this.get(i).getStats());
+            //System.out.println(this.get(i).getStats());
             selcted.add(this.get(i));
         }
         return new Population(selcted);
@@ -37,6 +37,7 @@ public class Population extends ArrayList<Agent> {
         }
         return new Population(selcted);
     }
+    
     public Population crossover(boolean Elitism){
         ArrayList<Agent> crossover = new ArrayList<>();
         if(!Elitism){
@@ -46,7 +47,8 @@ public class Population extends ArrayList<Agent> {
             }
         }
         else{
-            for(int i=0; i<this.size()*0.2; i++){
+            for(int i=0; i<this.size(   )*0.2; i++){
+                this.get(i).setSize(0);
                 crossover.add(this.get(i));
             }
             for(int i=0; i<this.size()*0.8; i++){

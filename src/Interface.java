@@ -5,14 +5,14 @@ import java.util.*;
 public class Interface extends JFrame {
     private boolean agentRandomSpawn = true;
     private boolean selectFittestByRank = true;
-    private boolean crossoverElitism = false;
+    private boolean crossoverElitism = true;
     private boolean crossoverPointFixed = true;
     private double mutationStepSize = 0.01;
     private boolean seeOthers = true;
-    private int foodSpawnRadius = 200;
+    private int foodSpawnRadius = 400;
     private float mutationRate = (float) 0.2;
     private int populationSize;
-    private int numberOfInputs = 12;
+    private int numberOfInputs = 28;
     Simulator panel;
 
     private JPanel createControlsPanel() {
@@ -51,7 +51,7 @@ public class Interface extends JFrame {
         mutationSlider.setMajorTickSpacing(1);
         mutationSlider.setPaintTicks(true);
         mutationSlider.setPaintLabels(true);
-        //mutationSlider.addChangeListener(e -> mutationStepSize = mutationSlider.getValue());
+        mutationSlider.addChangeListener(e -> mutationStepSize = (double) mutationSlider.getValue() /10);
         controlsPanel.add(mutationSlider);
 
         JLabel spawnRadiusLabel = new JLabel("Food spawn radius");
@@ -102,7 +102,7 @@ public class Interface extends JFrame {
         this.setSize(800, 700);
         this.setVisible(true);
 
-        panel.simulate(300);
+        panel.simulate(500);
 
         try {
             Thread.sleep(1000);
@@ -131,7 +131,7 @@ public class Interface extends JFrame {
             this.revalidate();
             this.repaint();
 
-            panel.simulate(300);
+            panel.simulate(400);
         }
     }
 
