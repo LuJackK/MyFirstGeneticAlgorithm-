@@ -145,21 +145,26 @@ public class Simulator extends JPanel {
             if (a.getStatus() == AgentState.DEAD) {
                 continue;
             }
-            for (Point p : new ArrayList<>(foods)) {
-                if (calculateDistance(a.getCordinates(), p) < foodSize + a.getSize()) {
-                    a.foodEat();
-                }
-            }
-
-            for (Agent other : population) {
-                if (other == a || other.getStatus() == AgentState.DEAD){continue;}
-                if (calculateDistance(a.getCordinates(), other.getCordinates()) < (double) (a.getSize() + agentSize * 2 + other.getSize()) / 2) {
-                    if (a.getSize() > other.getSize() && other.getStatus() == AgentState.ALIVE) {
-                        other.setStatus(AgentState.DEAD);
-                        a.eatEnemy(other);
+            synchronized (foods) {
+                for (Point p : new ArrayList<>(foods)) {
+                    if (calculateDistance(a.getCordinates(), p) < foodSize + a.getSize()) {
+                        a.foodEat();
+                        foods.remove(p);
                     }
                 }
             }
+            synchronized (population){
+                for (Agent other : population) {
+                    if (other == a || other.getStatus() == AgentState.DEAD){continue;}
+                    if (calculateDistance(a.getCordinates(), other.getCordinates()) < (double) (a.getSize() + agentSize * 2 + other.getSize()) / 2) {
+                        if (a.getSize() > other.getSize() && other.getStatus() == AgentState.ALIVE) {
+                            other.setStatus(AgentState.DEAD);
+                            a.eatEnemy(other);
+                        }
+                    }
+                }
+            }
+
             if (isOutOfBounds(a)) {
                 a.punish();
             } else {
