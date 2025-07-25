@@ -2,17 +2,18 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.*;
 
+
 public class Interface extends JFrame {
     private boolean agentRandomSpawn = true;
     private boolean selectFittestByRank = true;
     private boolean crossoverElitism = true;
-    private boolean crossoverPointFixed = true;
     private double mutationStepSize = 0.01;
     private boolean seeOthers = true;
     private int foodSpawnRadius = 400;
     private float mutationRate = (float) 0.2;
     private int populationSize;
     private int numberOfInputs = 28;
+    int simulationSpeed = 10;
     Simulator panel;
 
     private JPanel createControlsPanel() {
@@ -36,12 +37,6 @@ public class Interface extends JFrame {
         elitismCheckBox.setSelected(crossoverElitism);
         elitismCheckBox.addActionListener(e -> crossoverElitism = elitismCheckBox.isSelected());
         controlsPanel.add(elitismCheckBox);
-
-
-        JCheckBox fixedCrossoverCheckBox = new JCheckBox("Fixed Crossover Point");
-        fixedCrossoverCheckBox.setSelected(crossoverPointFixed);
-        fixedCrossoverCheckBox.addActionListener(e -> crossoverPointFixed = fixedCrossoverCheckBox.isSelected());
-        controlsPanel.add(fixedCrossoverCheckBox);
 
 
         JLabel mutationLabel = new JLabel("Mutation Step Size:");
@@ -78,26 +73,55 @@ public class Interface extends JFrame {
         }
         mutationRateSlider.setLabelTable(labelTable);
 
-        //mutationRateSlider.addChangeListener(e -> mutationRate = (float) (mutationRateSlider.getValue() / 10.0));
+        mutationRateSlider.addChangeListener(e -> mutationRate = (float) (mutationRateSlider.getValue() / 10.0));
         controlsPanel.add(mutationRateSlider);
 
+        // Simulation Speed Slider
+        JLabel speedLabel = new JLabel("Simulation Speed");
+        controlsPanel.add(speedLabel);
 
-        JCheckBox seeOthersCheckBox = new JCheckBox("See Others");
-        seeOthersCheckBox.setSelected(seeOthers);
-        seeOthersCheckBox.addActionListener(e -> seeOthers = seeOthersCheckBox.isSelected());
-        controlsPanel.add(seeOthersCheckBox);
+        JSlider speedSlider = new JSlider(1, 5, 1); // Default at medium speed (mapped to 2)
+        speedSlider.setMajorTickSpacing(1);
+        speedSlider.setPaintTicks(true);
+        speedSlider.setPaintLabels(true);
+
+// Mapping display labels
+        Hashtable<Integer, JLabel> speedLabelTable = new Hashtable<>();
+        speedLabelTable.put(1, new JLabel("1x"));
+        speedLabelTable.put(2, new JLabel("2x"));
+        speedLabelTable.put(3, new JLabel("3x"));
+        speedLabelTable.put(4, new JLabel("4x"));
+        speedLabelTable.put(5, new JLabel("5x"));
+        speedSlider.setLabelTable(speedLabelTable);
+
+        controlsPanel.add(speedSlider);
+
+// Simulation speed mapping logic
+        // Default speed
+
+        speedSlider.addChangeListener(e -> {
+            int sliderValue = speedSlider.getValue();
+            switch (sliderValue) {
+                case 1 -> simulationSpeed = 10;
+                case 2 -> simulationSpeed = 5;
+                case 3 -> simulationSpeed = 2;
+                case 4 -> simulationSpeed = 1;
+                case 5 -> simulationSpeed = 0;
+            }
+        });
 
         return controlsPanel;
     }
 
-    public Interface() {
+    public Interface() throws InterruptedException {
         populationSize = askForPopulationSize();
         Population population = new Population(populationSize, numberOfInputs);
-        panel = new Simulator(population, agentRandomSpawn, foodSpawnRadius, seeOthers);
+        panel = new Simulator(population, agentRandomSpawn, foodSpawnRadius, simulationSpeed);
         this.setDefaultCloseOperation(EXIT_ON_CLOSE);
-        this.add(panel);
         JPanel controlsPanel = createControlsPanel();
         this.add(controlsPanel, BorderLayout.SOUTH);
+        this.add(panel);
+        panel.setSize(800, 600);
         this.pack();
         this.setSize(800, 700);
         this.setVisible(true);
@@ -119,13 +143,13 @@ public class Interface extends JFrame {
             population = population.crossover(crossoverElitism);
             population.mutate(mutationStepSize, mutationRate);
 
-            Simulator newPanel = new Simulator(population, agentRandomSpawn, foodSpawnRadius, seeOthers);
+            Simulator newPanel = new Simulator(population, agentRandomSpawn, foodSpawnRadius, simulationSpeed);
 
             this.remove(panel);
             panel = newPanel;
-            this.add(panel, BorderLayout.CENTER);
-
             this.add(panel);
+            panel.setSize(800, 600);
+            this.setSize(800, 700);
             this.pack();
 
             this.revalidate();

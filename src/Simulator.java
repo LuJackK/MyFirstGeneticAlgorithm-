@@ -14,20 +14,18 @@ public class Simulator extends JPanel {
     private static int visionRadius = 30 * scale;
     private static int agentSize = 5 * scale;
     private static int foodSize = 3 * scale;
-    private static int popSize;
-    private boolean agentSeeOthers;
+    private static int simulationSpeed=10;
     private ArrayList<Point> foods = new ArrayList<>();
     private Population population;
     private  Random rand = new Random();
-    public Simulator(Population population,boolean AgentRandomSpawn, int foodSpawnRadius, boolean agentSeeOthers) {
+    public Simulator(Population population,boolean AgentRandomSpawn, int foodSpawnRadius, int simulationSpeed) {
         setBackground(Color.WHITE);
-        popSize = population.size();
+        this.simulationSpeed = simulationSpeed;
         this.population = population;
-        setPreferredSize(new Dimension(WIDTH,HEIGHT));
+        setPreferredSize(new Dimension(WIDTH,HEIGHT-100));
         setBackground(Color.BLACK);
         this.population = population;
         this.spawnRadius = foodSpawnRadius;
-        this.agentSeeOthers = agentSeeOthers;
         intializeFood();
         if(AgentRandomSpawn) {
             initializeAgentsRandom();
@@ -49,10 +47,12 @@ public class Simulator extends JPanel {
         }
     }
     private void drawFoods(Graphics2D g){
-        for(Point p : foods){
-            g.setColor(Color.ORANGE);
-            g.drawOval(p.x-5, p.y-5, foodSize, foodSize);
-            g.fillOval(p.x-5, p.y-5, foodSize, foodSize);
+        g.setColor(Color.ORANGE);
+        synchronized (foods) {
+            for(Point p : foods){
+                g.drawOval(p.x-5, p.y-5, foodSize, foodSize);
+                g.fillOval(p.x-5, p.y-5, foodSize, foodSize);
+            }
         }
     }
     private void initializeAgentsRandom(){
@@ -78,18 +78,21 @@ public class Simulator extends JPanel {
     }
 
     private void drawAgents(Graphics2D g){
-        for(Agent a : population){
-            if(a.getStatus()==AgentState.ALIVE)
-            {
-                g.setColor(Color.BLACK);
-                Point cords = a.getCordinates();
-                int size = agentSize+a.getSize();
-                g.drawOval(cords.x - size / 2, cords.y - size / 2, size, size);
-                g.fillOval(cords.x - size / 2, cords.y - size / 2, size, size);
+        synchronized (population){
+            for(Agent a : population){
+                if(a.getStatus()==AgentState.ALIVE)
+                {
+                    g.setColor(Color.BLACK);
+                    Point cords = a.getCordinates();
+                    int size = agentSize+a.getSize();
+                    g.drawOval(cords.x - size / 2, cords.y - size / 2, size, size);
+                    g.fillOval(cords.x - size / 2, cords.y - size / 2, size, size);
+                }
             }
         }
     }
-    private void checkVision(){
+
+    private void checkVision() {
         for(Agent a : population){
             if(a.getStatus()==AgentState.DEAD){continue;}
             ArrayList<Point> seenFoods = new ArrayList<>();
@@ -105,7 +108,6 @@ public class Simulator extends JPanel {
                 foodInputs[i][0] = (seenFoods.get(i).x-a.getCordinates().x);
                 foodInputs[i][1] = seenFoods.get(i).y-a.getCordinates().y;
             }
-
             ArrayList<Agent> seenPlayers = new ArrayList<>();
             for(Agent b : population){
                 if(b == a){
@@ -125,90 +127,83 @@ public class Simulator extends JPanel {
             }
             evaluateAction(a, a.evaluateBehavior(foodInputs, playerInputs));
         }
-
     }
-private void evaluateAction(Agent a, Action action){
-    switch(action){
-        case MOVEUP -> a.translateCordinates(0, agentSpeed);
-        case MOVEDOWN -> a.translateCordinates(0, -agentSpeed);
-        case MOVELEFT -> a.translateCordinates(-agentSpeed, 0);
-        case MOVERIGHT -> a.translateCordinates(agentSpeed, 0);
-        case MOVEUPLEFT -> a.translateCordinates(-agentSpeed, agentSpeed);
-        case MOVEUPRIGHT -> a.translateCordinates(agentSpeed, agentSpeed);
-        case MOVEDOWNLEFT -> a.translateCordinates(-agentSpeed, -agentSpeed);
-        case MOVEDOWNRIGHT -> a.translateCordinates(agentSpeed, -agentSpeed);
-    }
-}
-private void checkCollision(){
-    for(Agent a : population) {
-        if(a.getStatus()==AgentState.DEAD){continue;}
-        Iterator<Point> foodIterator = foods.iterator();
-        while (foodIterator.hasNext()) {
-            Point p = foodIterator.next();
-            if (calculateDistance(a.getCordinates(), p) < foodSize + a.getSize()) {
-                foodIterator.remove();
-                a.foodEat();
-            }
+    private void evaluateAction(Agent a, Action action){
+        switch(action){
+            case MOVEUP -> a.translateCordinates(0, agentSpeed);
+            case MOVEDOWN -> a.translateCordinates(0, -agentSpeed);
+            case MOVELEFT -> a.translateCordinates(-agentSpeed, 0);
+            case MOVERIGHT -> a.translateCordinates(agentSpeed, 0);
+            case MOVEUPLEFT -> a.translateCordinates(-agentSpeed, agentSpeed);
+            case MOVEUPRIGHT -> a.translateCordinates(agentSpeed, agentSpeed);
+            case MOVEDOWNLEFT -> a.translateCordinates(-agentSpeed, -agentSpeed);
+            case MOVEDOWNRIGHT -> a.translateCordinates(agentSpeed, -agentSpeed);
         }
-        Iterator<Agent> agentIterator = population.iterator();
-        while (agentIterator.hasNext()) {
-            Agent curr = agentIterator.next();
-            if(curr.getStatus()==AgentState.DEAD){continue;}
-            if(calculateDistance(a.getCordinates(), curr.getCordinates()) < (double) (a.getSize() + agentSize * 2 + curr.getSize()) /2) {
-                if(a.getSize()>curr.getSize()){
-                    curr.setStatus(AgentState.DEAD);
-                    a.eatEnemy(curr);
-                    System.out.println("YUMM");
-                }
-                else{
-                    continue;
+    }
+    private void checkCollision() {
+        for (Agent a : population) {
+            if (a.getStatus() == AgentState.DEAD) {
+                continue;
+            }
+            for (Point p : new ArrayList<>(foods)) {
+                if (calculateDistance(a.getCordinates(), p) < foodSize + a.getSize()) {
+                    a.foodEat();
                 }
             }
-        }
-        if(isOutOfBounds(a)){
-            a.punish();
-        }
-        else {
-            a.setFoodProximty(closestFoodToAgent(a));
-        }
-    }
-}
-public double closestFoodToAgent(Agent a) {
-    double distanceFromClosestPoint = Double.MAX_VALUE;
-    for(Point p : foods){
-        if(calculateDistance(a.getCordinates(), p) < distanceFromClosestPoint){
-            distanceFromClosestPoint = calculateDistance(a.getCordinates(), p);
-        }
-    }
-    return distanceFromClosestPoint;
-}
-private boolean isOutOfBounds(Agent a){
-    int x = a.getCordinates().x;
-    int y = a.getCordinates().y;
-    return x < 0 || x > WIDTH || y < 0 || y > HEIGHT;
-}
-public void simulate (int genLength){
-    for(int i=0; i<genLength; i++){
-        checkVision();
-        checkCollision();
-        repaint();
-        try {
-            Thread.sleep(10);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    }
-}
-@Override
-public void paint(Graphics g) {
-    g.setColor(Color.WHITE);
-    g.fillRect(0, 0, getWidth(), getHeight());
-    Graphics2D g2d = (Graphics2D) g;
-    drawFoods(g2d);
-    drawAgents(g2d);
-}
 
-private double calculateDistance(Point p1, Point p2){
-    return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-}
+            for (Agent other : population) {
+                if (other == a || other.getStatus() == AgentState.DEAD){continue;}
+                if (calculateDistance(a.getCordinates(), other.getCordinates()) < (double) (a.getSize() + agentSize * 2 + other.getSize()) / 2) {
+                    if (a.getSize() > other.getSize() && other.getStatus() == AgentState.ALIVE) {
+                        other.setStatus(AgentState.DEAD);
+                        a.eatEnemy(other);
+                    }
+                }
+            }
+            if (isOutOfBounds(a)) {
+                a.punish();
+            } else {
+                a.setFoodProximty(closestFoodToAgent(a));
+            }
+        }
+    }
+    public double closestFoodToAgent(Agent a) {
+        double distanceFromClosestPoint = Double.MAX_VALUE;
+        for(Point p : foods){
+            if(calculateDistance(a.getCordinates(), p) < distanceFromClosestPoint){
+                distanceFromClosestPoint = calculateDistance(a.getCordinates(), p);
+            }
+        }
+        return distanceFromClosestPoint;
+    }
+    private boolean isOutOfBounds(Agent a){
+        int x = a.getCordinates().x;
+        int y = a.getCordinates().y;
+        return x < 0 || x > WIDTH || y < 0 || y > HEIGHT;
+    }
+    public void simulate (int genLength) throws InterruptedException {
+        for(int i=0; i<genLength; i++){
+
+            checkVision();
+            checkCollision();
+            repaint();
+
+            try {
+                Thread.sleep(simulationSpeed);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+    @Override
+    public void paint(Graphics g) {
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, getWidth(), getHeight());
+        Graphics2D g2d = (Graphics2D) g;
+        drawFoods(g2d);
+        drawAgents(g2d);
+    }
+    private double calculateDistance(Point p1, Point p2){
+        return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+    }
 }
