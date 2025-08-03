@@ -344,7 +344,7 @@ public class Simulator extends JPanel {
 
         manager.startServer(noOfWorkers);
         for (int i = 0; i < genLength; i++) {
-            population = (Population) manager.distributeAndCollect(population, foods);
+            population = new Population(manager.distributeAndCollect(population, foods));
             checkCollisionSynchronized(executor);
             repaint();
         }
