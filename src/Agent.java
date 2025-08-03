@@ -1,7 +1,7 @@
 import java.awt.*;
 import java.util.*;
-
-public class Agent {
+import java.io.Serializable;
+public class Agent implements Serializable {
     private NeuralNetwork genome;
     private int foodEaten=0;
     private int mapExited;
