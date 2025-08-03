@@ -1,6 +1,6 @@
-import java.util.Arrays;
 
-public class Tensor {
+import java.io.Serializable;
+public class Tensor implements Serializable {
     private double[] data;
     public Tensor(double[] data) {
         this.data = data;

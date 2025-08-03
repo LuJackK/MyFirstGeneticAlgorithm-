@@ -1,6 +1,7 @@
 import java.util.ArrayList;
 import java.util.Random;
-public class NeuralNetwork {
+import java.io.Serializable;
+public class NeuralNetwork implements Serializable {
     private int inputSize;
     private int outputSize;
     private int sizeLayers;
