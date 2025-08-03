@@ -29,7 +29,7 @@ public class WorkerClient {
         while (true) {
             try {
                 PopulationBatch batch = (PopulationBatch) in.readObject();
-                List<Agent> updated = simulate(batch.agents, batch.foodSnapshot);
+                ArrayList<Agent> updated = simulate(batch.agents, batch.foodSnapshot);
                 out.writeObject(new SimulationResult(updated));
                 out.flush();
             } catch (EOFException | InterruptedException e) {
@@ -40,14 +40,14 @@ public class WorkerClient {
         socket.close();
     }
 
-    private List<Agent> simulate(List<Agent> agents, List<Point> food) throws InterruptedException {
+    private ArrayList<Agent> simulate(ArrayList<Agent> agents, ArrayList<Point> food) throws InterruptedException {
         for (Agent a : agents) {
             performSimulationStep(agents, food);
         }
         return agents;
     }
 
-    public void performSimulationStep(List<Agent> agents, List<Point> foods) throws InterruptedException {
+    public void performSimulationStep(ArrayList<Agent> agents, List<Point> foods) throws InterruptedException {
         ForkJoinPool executor = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
         List<Agent> agentList = new ArrayList<>(agents);

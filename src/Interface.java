@@ -373,7 +373,6 @@ public class Interface extends JFrame {
         return controls;
     }
 
-
     public static void main(String[] args) {
         SwingUtilities.invokeLater(Interface::new);
     }

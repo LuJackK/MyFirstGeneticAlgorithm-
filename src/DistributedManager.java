@@ -31,14 +31,14 @@ public class DistributedManager {
         }
     }
 
-    public List<Agent> distributeAndCollect(List<Agent> agents, List<Point> food) throws Exception {
+    public ArrayList<Agent> distributeAndCollect(ArrayList<Agent> agents, ArrayList<Point> food) throws Exception {
 
         int batchSize = agents.size() / workers.size();
-        List<Future<List<Agent>>> futures = new ArrayList<>();
+        ArrayList<Future<ArrayList<Agent>>> futures = new ArrayList<>();
         for (int i = 0; i < workers.size(); i++) {
             int from = i * batchSize;
             int to = (i == workers.size() - 1) ? agents.size() : from + batchSize;
-            List<Agent> subList = agents.subList(from, to);
+            ArrayList<Agent> subList = (ArrayList<Agent>) agents.subList(from, to);
             PopulationBatch batch = new PopulationBatch(subList, food);
 
             WorkerHandler handler = workers.get(i);
@@ -46,8 +46,8 @@ public class DistributedManager {
         }
 
         // Collect and merge agent results
-        List<Agent> updated = new ArrayList<>();
-        for (Future<List<Agent>> future : futures) {
+        ArrayList<Agent> updated = new ArrayList<>();
+        for (Future <ArrayList<Agent>> future : futures) {
             updated.addAll(future.get());
         }
 

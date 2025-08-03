@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.List;
 
 public class WorkerHandler {
@@ -15,7 +16,7 @@ public class WorkerHandler {
         this.in = new ObjectInputStream(socket.getInputStream());
     }
 
-    public List<Agent> sendAndReceive(PopulationBatch batch) throws Exception {
+    public ArrayList<Agent> sendAndReceive(PopulationBatch batch) throws Exception {
         out.writeObject(batch);
         out.flush();
         SimulationResult result = (SimulationResult) in.readObject();
