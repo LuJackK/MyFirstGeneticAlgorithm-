@@ -7,8 +7,8 @@ import java.util.Hashtable;
 public class Interface extends JFrame {
     // Simulation configuration variables
     private boolean agentRandomSpawn = true;
-    private boolean selectFittestByRank = true;
-    private boolean crossoverElitism = true;
+    private boolean selectFittestByRank = false;
+    private boolean crossoverElitism = false;
     private double mutationStepSize = 0.1;
 
     private int foodSpawnRadius = 400;
@@ -82,7 +82,6 @@ public class Interface extends JFrame {
         // --- Mode Selection Panel ---
         modePanel = new JPanel();
         modePanel.setLayout(new BoxLayout(modePanel, BoxLayout.Y_AXIS));
-        modePanel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
 
         JRadioButton sequential = new JRadioButton("Sequential Mode");
         JRadioButton parallel = new JRadioButton("Parallel Mode");
@@ -120,14 +119,13 @@ public class Interface extends JFrame {
 
         sequential.setAlignmentX(Component.CENTER_ALIGNMENT);
         parallel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        distrubuted.setAlignmentX(Component.CENTER_ALIGNMENT);
         popSizeField.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         modePanel.add(sequential);
-        modePanel.add(Box.createRigidArea(new Dimension(0, 10)));
         modePanel.add(parallel);
-        modePanel.add(Box.createRigidArea(new Dimension(0, 20)));
-        modePanel.add(Box.createRigidArea(new Dimension(0, 20)));
         modePanel.add(distrubuted);
+        modePanel.add(Box.createRigidArea(new Dimension(0, 10)));
         modePanel.add(new JLabel("Population Size:"));
         modePanel.add(popSizeField);
         modePanel.add(Box.createRigidArea(new Dimension(0, 10)));
@@ -212,9 +210,6 @@ public class Interface extends JFrame {
             Thread.sleep(1000);
             while (true) {
                 generation++;
-                if(generation==50){
-                    break;
-                }
                 population = selectFittestByRank ? population.selectFitestByRank() : population.selectFitestByTournament();
                 population = population.crossover(crossoverElitism);
                 population.mutate(mutationStepSize, mutationRate);
