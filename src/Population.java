@@ -2,68 +2,15 @@ import java.util.ArrayList;
 import java.util.Random;
 
 public class Population extends ArrayList<Agent> {
-    private static final int genomeSize = 6;
+    private static final int outputSize = 8;
     private Random rand = new Random();
-    public Population(int n) {
+    public Population(int n, int inputSize) {
         for(int i = 0; i < n; i++) {
-            this.add(randomAgent());
+            this.add(new Agent(inputSize, outputSize));
         }
     }
     public Population(ArrayList<Agent> a) {
-        for(int i = 0; i < a.size(); i++) {
-            this.add(a.get(i));
-        }
-    }
-    private Agent randomAgent() {
-
-        ArrayList<Behavior> behaviors = new ArrayList<>();
-        for(int i=0; i<genomeSize/2; i++){
-
-            Condition condition = new Condition(randomEvent());
-            ArrayList<Action> actions = new ArrayList<>();
-            for(int j=0; j<8; j++){
-                actions.add(randomAction());
-            }
-            Behavior b = new Behavior(condition, actions, rand.nextInt(10));
-            behaviors.add(b);
-        }
-        //one of each
-        ArrayList<Action> none = new ArrayList<Action>();
-        ArrayList<Action> person = new ArrayList<Action>();
-        ArrayList<Action> food = new ArrayList<Action>();
-        for(int j=0; j<8; j++){
-            none.add(randomAction());
-            person.add(randomAction());
-            food.add(randomAction());
-        }
-        behaviors.add(new Behavior(new Condition(Event.NONE), none, rand.nextInt(10)));
-        behaviors.add(new Behavior(new Condition(Event.PERSON_NEARBY), food, rand.nextInt(10)));
-        behaviors.add(new Behavior(new Condition(Event.FOOD_NEARBY), person, rand.nextInt(10)));
-        return new Agent(behaviors);
-    }
-    private Event randomEvent(){
-        int random = rand.nextInt(0,3);
-        switch (random){
-            case 0 ->{return Event.FOOD_NEARBY;}
-            case 1 ->{return Event.PERSON_NEARBY;}
-            case 2 ->{return Event.NONE;}
-        }
-        return null;
-    }
-    public Action randomAction(){
-        int random = rand.nextInt(0,9);
-        switch (random){
-            case 0 -> {return Action.MOVEDOWNLEFT;}
-            case 1 -> {return Action.MOVEDOWNRIGHT;}
-            case 2 -> {return Action.MOVERIGHT;}
-            case 3 -> {return Action.MOVEDOWN;}
-            case 4 -> {return Action.MOVEUP;}
-            case 5 -> {return Action.MOVELEFT;}
-            case 6 -> {return Action.MOVEUPRIGHT;}
-            case 7 -> {return Action.MOVEUPLEFT;}
-            case 8 -> {return Action.NONE;}
-        }
-        return null;
+        this.addAll(a);
     }
     public Population selectFitestByRank(){
         this.sort((a, b) -> {if (a.getStats() > b.getStats()) {
@@ -75,10 +22,12 @@ public class Population extends ArrayList<Agent> {
         }});
         ArrayList<Agent> selcted = new ArrayList<>();
         for(int i=0; i<this.size()/2; i++){
+            //System.out.println(this.get(i).getStats());
             selcted.add(this.get(i));
         }
         return new Population(selcted);
     }
+
     public Population selectFitestByTournament(){
         ArrayList<Agent> selcted = new ArrayList<>();
         for(int i=0; i<this.size()/2; i++){
@@ -88,32 +37,67 @@ public class Population extends ArrayList<Agent> {
         }
         return new Population(selcted);
     }
-    public Population crossover(boolean Elitism, boolean fixed){
+    
+    public Population crossover(boolean Elitism){
         ArrayList<Agent> crossover = new ArrayList<>();
-        Agent a = randomAgent();
         if(!Elitism){
             for(int i=0; i<this.size(); i++){
-                crossover.add(a.agentfixedPointCrossover(this.get(i), this.get(this.size()-1-i)));
-                crossover.add(a.agentfixedPointCrossover(this.get(this.size()-1-i), this.get(i)));
+                crossover.add(agentUniformCrossover(this.get(i), this.get(this.size()-1-i)));
+                crossover.add(agentUniformCrossover(this.get(this.size()-1-i), this.get(i)));
             }
         }
         else{
-            for(int i=0; i<this.size()*0.2; i++){
+            for(int i=0; i<this.size(   )*0.2; i++){
+                this.get(i).setSize(0);
                 crossover.add(this.get(i));
             }
-            for(int i=0; i<this.size()*0.9; i++){
-                crossover.add((fixed) ? a.agentfixedPointCrossover(this.get(i), this.get(this.size()-1-i)) : a.agentRandomPointCrossover(this.get(i), this.get(this.size()-1-i)));
-                crossover.add((fixed) ? a.agentfixedPointCrossover(this.get(this.size()-1-i), this.get(i)) : a.agentRandomPointCrossover(this.get(this.size()-1-i), this.get(i)));
+            for(int i=0; i<this.size()*0.8; i++){
+                crossover.add(agentUniformCrossover(this.get(i), this.get(this.size()-1-i)));
+                crossover.add(agentUniformCrossover(this.get(this.size()-1-i), this.get(i)));
             }
         }
         return new Population(crossover);
     }
-    public void mutate(int mutationStepSize, float mutationRate){
-        this.getFirst().setMutateStep(mutationStepSize);
-        for(Agent a : this){
-            if(rand.nextFloat() < mutationRate){
-                a.mutateAgent();
+    private Agent agentUniformCrossover(Agent a, Agent b){
+        NeuralNetwork genomeA = a.getGenome();
+        NeuralNetwork genomeB = b.getGenome();
+        NeuralNetwork newGenome;
+        ArrayList<Tensor[]> weightsA = genomeA.getWeights();
+        ArrayList<Tensor[]> weightsB = genomeB.getWeights();
+        ArrayList<Tensor> biasesA = genomeA.getBiases();
+        ArrayList<Tensor> biasesB = genomeB.getBiases();
+        ArrayList<Tensor[]> newWeights = new ArrayList<>();
+        ArrayList<Tensor> newBiases = new ArrayList<>();
+        for(int i=0; i<weightsA.size(); i++){
+            Tensor[] newLayer = new Tensor[weightsA.get(i).length];
+            for(int j=0; j<weightsA.get(i).length; j++){
+                double[] currentVectorA = weightsA.get(i)[j].getData();
+                double[] currentVectorB = weightsB.get(i)[j].getData();
+                double[] newVector = new double[currentVectorA.length];
+                for(int k=0; k<currentVectorA.length; k++){
+                    newVector[k] = (Math.random()<0.5) ? currentVectorA[k] : currentVectorB[k];
+                }
+                Tensor newTensor = new Tensor(newVector);
+                newLayer[j] = newTensor;
             }
+            newWeights.add(newLayer);
+            double[] newBiasVector = new double[biasesA.get(i).getData().length];
+            double[] currentBiasA = biasesA.get(i).getData();
+            double[] currentBiasB = biasesB.get(i).getData();
+            for(int j=0; j<currentBiasA.length; j++){
+                newBiasVector[j] = (Math.random()<0.5) ? currentBiasA[j] : currentBiasB[j];
+            }
+            Tensor newBiasTensor = new Tensor(newBiasVector);
+            newBiases.add(newBiasTensor);
+        }
+        newGenome = new NeuralNetwork(newWeights, newBiases);
+        //newGenome.printNN();
+        return new Agent(newGenome);
+    }
+    public void mutate(double mutationStepSize, double mutationRate){
+        for(Agent a : this){
+            a.mutateAgent(mutationStepSize, mutationRate);
+
         }
     }
 
