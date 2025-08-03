@@ -38,7 +38,7 @@ public class DistributedManager {
         for (int i = 0; i < workers.size(); i++) {
             int from = i * batchSize;
             int to = (i == workers.size() - 1) ? agents.size() : from + batchSize;
-            ArrayList<Agent> subList = (ArrayList<Agent>) agents.subList(from, to);
+            ArrayList<Agent> subList = new ArrayList<>(agents.subList(from, to))
             PopulationBatch batch = new PopulationBatch(subList, food);
 
             WorkerHandler handler = workers.get(i);
