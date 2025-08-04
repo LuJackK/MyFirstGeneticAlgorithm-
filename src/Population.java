@@ -42,16 +42,17 @@ public class Population extends ArrayList<Agent> {
         ArrayList<Agent> crossover = new ArrayList<>();
         if(!Elitism){
             for(int i=0; i<this.size(); i++){
+
                 crossover.add(agentUniformCrossover(this.get(i), this.get(this.size()-1-i)));
                 crossover.add(agentUniformCrossover(this.get(this.size()-1-i), this.get(i)));
             }
         }
         else{
-            for(int i=0; i<this.size(   )*0.2; i++){
+            for(int i=0; i<Math.floor(this.size()*0.2); i++){
                 this.get(i).setSize(0);
                 crossover.add(this.get(i));
             }
-            for(int i=0; i<this.size()*0.8; i++){
+            for(int i=0; i<this.size()-Math.floor(this.size()*0.2); i++){
                 crossover.add(agentUniformCrossover(this.get(i), this.get(this.size()-1-i)));
                 crossover.add(agentUniformCrossover(this.get(this.size()-1-i), this.get(i)));
             }

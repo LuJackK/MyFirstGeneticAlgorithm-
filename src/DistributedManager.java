@@ -45,13 +45,11 @@ public class DistributedManager {
             futures.add(pool.submit(() -> handler.sendAndReceive(batch)));
         }
 
-        // Collect and merge agent results
         ArrayList<Agent> updated = new ArrayList<>();
         for (Future <ArrayList<Agent>> future : futures) {
             updated.addAll(future.get());
         }
 
-        // Replace old agent list or merge results here
         agents.clear();
         agents.addAll(updated);
         return updated;

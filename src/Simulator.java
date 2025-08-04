@@ -1,6 +1,9 @@
 import javax.swing.*;
 import java.awt.*;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -108,7 +111,7 @@ public class Simulator extends JPanel {
             for(Agent a : population){
                 if(a.getStatus()==AgentState.ALIVE)
                 {
-                    g.setColor(Color.BLACK);
+                    g.setColor(a.getAgentColor());
                     Point cords = a.getCordinates();
                     int size = agentSize+a.getSize();
                     g.drawOval(cords.x - size / 2, cords.y - size / 2, size, size);
@@ -134,7 +137,6 @@ public class Simulator extends JPanel {
 
                     Point agentPos = a.getCordinates();
 
-                    // Process Food
                     List<Point> seenFoods = foods.stream()
                             .sorted(Comparator.comparingDouble(p -> calculateDistance(agentPos, p)))
                             .limit(5)
@@ -147,7 +149,6 @@ public class Simulator extends JPanel {
                         foodInputs[k][1] = f.y - agentPos.y;
                     }
 
-                    // Process other agents
                     List<Agent> seenPlayers = population.stream()
                             .filter(b -> b != a && b.getStatus() == AgentState.ALIVE)
                             .sorted(Comparator.comparingDouble(b -> calculateDistance(agentPos, b.getCordinates())))
@@ -160,7 +161,7 @@ public class Simulator extends JPanel {
                         Point bp = b.getCordinates();
                         playerInputs[k][0] = bp.x - agentPos.x;
                         playerInputs[k][1] = bp.y - agentPos.y;
-                        playerInputs[k][2] = b.getSize();
+                        playerInputs[k][2] = b.getSize()-a.getSize();
                     }
 
                     evaluateAction(a, a.evaluateBehavior(foodInputs, playerInputs));
@@ -203,7 +204,7 @@ public class Simulator extends JPanel {
             for (int i = 0; i < 5; i++) {
                 playerInputs[i][0] = seenPlayers.get(i).getCordinates().x-a.getCordinates().x;
                 playerInputs[i][1] = seenPlayers.get(i).getCordinates().y-a.getCordinates().y;
-                playerInputs[i][2] = seenPlayers.get(i).getSize();
+                playerInputs[i][2] = seenPlayers.get(i).getSize()-a.getSize();
             }
             evaluateAction(a, a.evaluateBehavior(foodInputs, playerInputs));
         }
@@ -303,7 +304,7 @@ public class Simulator extends JPanel {
         int y = a.getCordinates().y;
         return x < 0 || x > WIDTH || y < 0 || y > HEIGHT;
     }
-    public void simulate (int genLength) {
+    public void simulate (int genLength) throws InterruptedException {
         for(int i=0; i<genLength; i++){
             checkVision();
             checkCollision();
@@ -313,6 +314,10 @@ public class Simulator extends JPanel {
                 Thread.sleep(simulationSpeed);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+            }
+
+            while (paused) {
+                Thread.sleep(10);
             }
         }
     }
@@ -331,7 +336,7 @@ public class Simulator extends JPanel {
             }
 
             while (paused) {
-                Thread.sleep(10);  // Avoid CPU burning
+                Thread.sleep(10);
             }
         }
 
@@ -344,9 +349,12 @@ public class Simulator extends JPanel {
 
         manager.startServer(noOfWorkers);
         for (int i = 0; i < genLength; i++) {
-            population = new Population(manager.distributeAndCollect(population, foods));
+            population =(Population) manager.distributeAndCollect(population, foods);
             checkCollisionSynchronized(executor);
             repaint();
+            while (paused) {
+                Thread.sleep(10);
+            }
         }
         executor.shutdown();
     }
@@ -359,6 +367,26 @@ public class Simulator extends JPanel {
         drawAgents(g2d);
         drawStats(g2d);
     }
+    public void savePopulation() {
+        try {
+
+            File dir = new File("saves");
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            File file = new File(dir, "SavedPopulation.dat");
+            try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
+                oos.writeObject(this.population);
+                System.out.println("Population saved to " + file.getAbsolutePath());
+            }
+
+        } catch (IOException e) {
+            System.err.println("Error saving population: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     private double calculateDistance(Point p1, Point p2){
         return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
     }

@@ -13,15 +13,28 @@ public class Agent implements Serializable {
     private static final double biasMax = 0.001;
     private static final double weightMin = -1;
     private static final int weightMax = 1;
+    private final Color agentColor;
     private AgentState status = AgentState.ALIVE;
     public Agent(int inputSize, int outputSize) {
         int sizeLayers =(int) (((inputSize + outputSize) / 2.0) + (2*inputSize)) / 2;
         this.genome = new NeuralNetwork(inputSize, outputSize, noOfHiddenLayers, sizeLayers, weightMin, weightMax, biasMin, biasMax);
         foodEaten = 0;
+        Random rand = new Random();
+        int r = rand.nextInt(256); // 0–255
+        int g = rand.nextInt(256);
+        int b = rand.nextInt(256);
+        agentColor = new Color(r, g, b);
+
         //this.genome.printNN();
     }
     public Agent(NeuralNetwork genome) {
         this.genome = genome;
+        Random rand = new Random();
+        int r = rand.nextInt(256); // 0–255
+        int g = rand.nextInt(256);
+        int b = rand.nextInt(256);
+        agentColor = new Color(r, g, b);
+
     }
     public Action evaluateBehavior(int[][] foodInputs, int[][] playerInputs){
         int inputLength = (foodInputs.length*foodInputs[0].length)+(playerInputs.length*playerInputs[0].length);
@@ -114,7 +127,10 @@ public class Agent implements Serializable {
         foodEaten++;
     }
     public double getStats(){
-        return (foodEaten*100) - (mapExited*100);
+        double dx = cordinates.x - 400;
+        double dy = cordinates.y - 300;
+        System.out.println((Math.sqrt(dx*dx+dy*dy)*10));
+        return (foodEaten*100) - (mapExited*mapExited+100) + (500-Math.sqrt(dx*dx+dy*dy))*10;
     }
     public void setSize(int s){
         foodEaten = s;
@@ -141,9 +157,12 @@ public class Agent implements Serializable {
         mapExited++;
     }
     public void eatEnemy(Agent a){
-        this.foodEaten+= a.foodEaten;
+        this.foodEaten+= 2*a.foodEaten;
     }
     public NeuralNetwork getGenome() {
         return genome;
+    }
+    public Color getAgentColor(){
+        return agentColor;
     }
 }

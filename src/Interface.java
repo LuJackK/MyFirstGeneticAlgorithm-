@@ -1,16 +1,21 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.util.ArrayList;
 import java.util.Hashtable;
 
 public class Interface extends JFrame {
     // Simulation configuration variables
     private boolean agentRandomSpawn = true;
-    private boolean selectFittestByRank = false;
+    private boolean selectFittestByRank = true;
     private boolean crossoverElitism = false;
     private double mutationStepSize = 0.1;
 
+    private Population pop;
     private int foodSpawnRadius = 400;
     private float mutationRate = 0.2f;
     private int populationSize;
@@ -18,7 +23,6 @@ public class Interface extends JFrame {
     private int simulationSpeed = 0;
     private boolean isParallel = false;
     private boolean isDistrubuted = false;
-    private boolean loadedPopulation = false;
     private int simulationLength = 500;
     private static long startTime;
     private int generation = 0;
@@ -31,11 +35,12 @@ public class Interface extends JFrame {
     private JPanel controlPanel;
     private Simulator simPanel;
     private JPanel connectPanel;
+    private JPanel loadPanel;
 
     public Interface() {
         setTitle("Simulation Setup");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setSize(400, 300); // Initial window for setup
+        setSize(400, 300);
         setLocationRelativeTo(null);
 
         initPanels();
@@ -46,7 +51,7 @@ public class Interface extends JFrame {
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
 
-        // --- Start Panel ---
+
         startPanel = new JPanel();
         startPanel.setLayout(new BoxLayout(startPanel, BoxLayout.Y_AXIS));
         startPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
@@ -60,12 +65,12 @@ public class Interface extends JFrame {
         connectToMasterButton.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         newButton.addActionListener(e -> {
-            loadedPopulation = false;
+
             cardLayout.show(mainPanel, "MODE");
         });
         loadButton.addActionListener(e -> {
-            loadedPopulation = true;
-            cardLayout.show(mainPanel, "MODE");
+
+            cardLayout.show(mainPanel, "LOAD");
 
         });
         connectToMasterButton.addActionListener(e -> {
@@ -79,7 +84,6 @@ public class Interface extends JFrame {
         startPanel.add(Box.createRigidArea(new Dimension(0, 20)));
         startPanel.add(connectToMasterButton);
 
-        // --- Mode Selection Panel ---
         modePanel = new JPanel();
         modePanel.setLayout(new BoxLayout(modePanel, BoxLayout.Y_AXIS));
 
@@ -92,7 +96,7 @@ public class Interface extends JFrame {
         group.add(distrubuted);
         sequential.setSelected(true);
 
-        JTextField popSizeField = new JTextField("100");
+        JTextField popSizeField = new JTextField("50");
         popSizeField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         JTextField simLengthField = new JTextField("500");
         simLengthField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
@@ -111,7 +115,7 @@ public class Interface extends JFrame {
                 if (simulationLength <=0) throw new NumberFormatException();
                 if (populationSize <= 0) throw new NumberFormatException();
                 if (noOfWokers <= 0) throw new NumberFormatException();
-                launchSimulation();
+                launchSimulation(false);
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(this, "Please enter a valid positive integer for parameters.", "Input Error", JOptionPane.ERROR_MESSAGE);
             }
@@ -139,7 +143,7 @@ public class Interface extends JFrame {
 
         JLabel hostIpLabel = new JLabel("Host IP:");
         hostIpLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        JTextField hostIpField = new JTextField("127.0.0.1");
+        JTextField hostIpField = new JTextField("192.168.1.2");
         hostIpField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         hostIpField.setAlignmentX(Component.CENTER_ALIGNMENT);
         JButton connectButton = new JButton("Connect");
@@ -163,11 +167,37 @@ public class Interface extends JFrame {
         connectPanel.add(Box.createRigidArea(new Dimension(0, 40)));
         connectPanel.add(connectButton);
 
+        loadPanel = new JPanel();
+        loadPanel.setLayout(new BoxLayout(loadPanel, BoxLayout.Y_AXIS));
+        JButton uploadButton = new JButton("Upload File");
+        uploadButton.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            int option = fileChooser.showOpenDialog(this);
+            if (option == JFileChooser.APPROVE_OPTION) {
+                File selectedFile = fileChooser.getSelectedFile();
+                try {
+                    // Load population
+                    Population loadedPop = loadArrayListFromFile(selectedFile.getAbsolutePath());
+                    if (loadedPop != null) {
+                        pop=loadedPop;
+                        launchSimulation(true);
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Failed to load population from file.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, "Error loading file: " + ex.getMessage(), "File Load Error", JOptionPane.ERROR_MESSAGE);
+                    ex.printStackTrace();
+                }
+            }
+        });
+        uploadButton.setAlignmentX(CENTER_ALIGNMENT);
+        uploadButton.setAlignmentY(CENTER_ALIGNMENT);
+        loadPanel.add(uploadButton);
 
         mainPanel.add(startPanel, "START");
         mainPanel.add(modePanel, "MODE");
         mainPanel.add(connectPanel, "CONNECT");
-
+        mainPanel.add(loadPanel, "LOAD");
 
         setContentPane(mainPanel);
         cardLayout.show(mainPanel, "START");
@@ -177,13 +207,27 @@ public class Interface extends JFrame {
         WorkerClient worker = new WorkerClient(Ip, 8888);
         worker.start();
     }
-
-    private void launchSimulation() {
+    private Population loadArrayListFromFile(String fileName) {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(fileName))) {
+            return new Population((ArrayList<Agent>) ois.readObject());
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Error loading ArrayList: " + e.getMessage());
+            e.printStackTrace();
+            return new Population(new ArrayList<>());
+        }
+    }
+    private void launchSimulation(boolean loaded) {
         setSize(1200, 600);
         setLocationRelativeTo(null);
         startTime = System.currentTimeMillis();
+        Population population;
+        if(loaded){
+             population = pop;
+        }
+        else{
+            population = new Population(populationSize, numberOfInputs);
+        }
 
-        Population population = new Population(populationSize, numberOfInputs);
         simPanel = new Simulator(population, agentRandomSpawn, foodSpawnRadius, simulationSpeed, startTime, generation);
         simPanel.setPreferredSize(new Dimension(800, 600));
         simPanel.setMaximumSize(new Dimension(800, 600));
@@ -192,7 +236,6 @@ public class Interface extends JFrame {
         controlPanel.setPreferredSize(new Dimension(400, 600)); // Wider for 4 elements/row
         controlPanel.setMaximumSize(new Dimension(400, 600));
 
-        // === Use BorderLayout to arrange side-by-side ===
         JPanel simContainer = new JPanel(new BorderLayout());
         simContainer.add(controlPanel, BorderLayout.WEST);
         simContainer.add(simPanel, BorderLayout.CENTER);
@@ -211,7 +254,9 @@ public class Interface extends JFrame {
             while (true) {
                 generation++;
                 population = selectFittestByRank ? population.selectFitestByRank() : population.selectFitestByTournament();
+
                 population = population.crossover(crossoverElitism);
+
                 population.mutate(mutationStepSize, mutationRate);
                 Simulator newPanel = new Simulator(population, agentRandomSpawn, foodSpawnRadius, simulationSpeed, startTime, generation);
                 newPanel.setPreferredSize(new Dimension(800, 600));
@@ -230,9 +275,7 @@ public class Interface extends JFrame {
                 } else if (isDistrubuted) {
                     simPanel.simulateDistrubuted(simulationLength, noOfWokers);
                 }
-                else{
-                    simPanel.simulate(populationSize);
-                }
+                else
                 {
                     simPanel.simulate(simulationLength);
                 }
@@ -254,7 +297,6 @@ public class Interface extends JFrame {
 
         int row = 0;
 
-        // === Row 0: First 2 Checkboxes ===
         gbc.gridx = 0;
         gbc.gridy = row;
         JCheckBox randomSpawnCheck = new JCheckBox("Agent Random Spawn", agentRandomSpawn);
@@ -266,7 +308,6 @@ public class Interface extends JFrame {
         fittestCheck.addActionListener(e -> selectFittestByRank = fittestCheck.isSelected());
         controls.add(fittestCheck, gbc);
 
-        // === Row 1: Third Checkbox ===
         row++;
         gbc.gridx = 0;
         gbc.gridy = row;
@@ -275,13 +316,9 @@ public class Interface extends JFrame {
         elitismCheck.addActionListener(e -> crossoverElitism = elitismCheck.isSelected());
         controls.add(elitismCheck, gbc);
 
-
         row++;
-
         gbc.gridwidth = 2;
         gbc.gridx = 0;
-
-        // -- Simulation Length --
         gbc.gridy = row++;
         controls.add(new JLabel("Simulation Length:"), gbc);
         gbc.gridx = 1;
@@ -289,7 +326,6 @@ public class Interface extends JFrame {
         simLengthField.addActionListener(e -> simulationLength = Integer.parseInt(simLengthField.getText()));
         controls.add(simLengthField, gbc);
 
-        // -- Mutation Step Size --
         gbc.gridx = 0;
         gbc.gridy = row++;
         controls.add(new JLabel("Mutation Step Size:"), gbc);
@@ -302,7 +338,6 @@ public class Interface extends JFrame {
         mutSlider.addChangeListener(e -> mutationStepSize = mutSlider.getValue() / 10.0);
         controls.add(mutSlider, gbc);
 
-        // -- Food Spawn Radius --
         gbc.gridy = row++;
         controls.add(new JLabel("Food Spawn Radius:"), gbc);
 
@@ -315,7 +350,6 @@ public class Interface extends JFrame {
         spawnSlider.addChangeListener(e -> foodSpawnRadius = spawnSlider.getValue() * 50);
         controls.add(spawnSlider, gbc);
 
-        // -- Mutation Rate --
         gbc.gridy = row++;
         controls.add(new JLabel("Mutation Rate:"), gbc);
 
@@ -333,7 +367,6 @@ public class Interface extends JFrame {
         rateSlider.addChangeListener(e -> mutationRate = rateSlider.getValue() / 10.0f);
         controls.add(rateSlider, gbc);
 
-        // -- Simulation Speed --
         gbc.gridy = row++;
         controls.add(new JLabel("Simulation Speed:"), gbc);
 
@@ -359,12 +392,14 @@ public class Interface extends JFrame {
         });
         controls.add(speedSlider, gbc);
 
-        // === Pause Button ===
         gbc.gridy = row++;
         JButton pauseBtn = new JButton("Pause/Unpause");
         pauseBtn.addActionListener(e -> simPanel.togglePause());
         controls.add(pauseBtn, gbc);
-
+        gbc.gridy= row;
+        JButton saveButton = new JButton("Save");
+        saveButton.addActionListener(e -> simPanel.savePopulation());
+        controls.add(saveButton, gbc);
         return controls;
     }
 
